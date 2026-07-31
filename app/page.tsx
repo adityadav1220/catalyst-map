@@ -111,11 +111,15 @@ export default function Home() {
               <List items={analysis.possibleLosers} />
             </Section>
 
-            <Section title="7. Key Risks and Counterarguments">
+            <Section title="7. Second-Order Effects">
+              <List items={analysis.secondOrderEffects} />
+            </Section>
+
+            <Section title="8. Key Risks and Counterarguments">
               <List items={analysis.keyRisksAndCounterarguments} />
             </Section>
 
-            <Section title="8. Research Checklist">
+            <Section title="9. Research Checklist">
               <List items={analysis.researchChecklist} />
             </Section>
           </section>
