@@ -10,7 +10,7 @@ export type CatalystAnalysis = {
   researchChecklist: string[];
 };
 
-type CatalystScenario = "semiconductor" | "ev" | "glp1PharmaPatent" | "generic";
+export type CatalystScenario = "semiconductor" | "ev" | "pharma" | "generic";
 
 type ScenarioTemplate = Omit<CatalystAnalysis, "eventSummary"> & {
   eventSummary: (event: string) => string;
@@ -19,19 +19,37 @@ type ScenarioTemplate = Omit<CatalystAnalysis, "eventSummary"> & {
 const normalizeEvent = (eventText: string) =>
   eventText.trim().replace(/\s+/g, " ");
 
-const detectScenario = (eventText: string): CatalystScenario => {
+const semiconductorPattern =
+  /\b(semiconductor|semiconductors|chip|chips|fab|fabs|wafer|wafers|foundry|foundries)\b/;
+
+const evPattern =
+  /\b(electric vehicle|electric vehicles|ev|evs|battery|batteries|charging|charger|chargers)\b|public transport electric/;
+
+const explicitPharmaPattern =
+  /\b(ozempic|semaglutide|wegovy|glp[-\s]?1|diabetes drugs?|weight[-\s]loss drugs?)\b/;
+
+const patentOrGenericPattern = /\b(patent|patents|patented|generic|generics)\b/;
+
+const pharmaContextPattern =
+  /\b(drug|drugs|medicine|medicines|pharmaceutical|pharmaceuticals|therapy|therapies|prescription|prescriptions|biopharma)\b/;
+
+export const detectScenario = (eventText: string): CatalystScenario => {
   const lower = eventText.toLowerCase();
 
-  if (/\b(semiconductor|semiconductors|chip|chips|fab|fabs|wafer|wafers|foundry|foundries)\b/.test(lower)) {
+  if (semiconductorPattern.test(lower)) {
     return "semiconductor";
   }
 
-  if (/\b(electric vehicle|electric vehicles|ev|evs|battery|batteries|charging|charger|chargers)\b|public transport electric/.test(lower)) {
+  if (evPattern.test(lower)) {
     return "ev";
   }
 
-  if (/\b(ozempic|semaglutide|glp-1|glp1|patent|patents|generic drug|generic drugs|pharma)\b/.test(lower)) {
-    return "glp1PharmaPatent";
+  const hasExplicitPharmaTerm = explicitPharmaPattern.test(lower);
+  const hasPatentOrGenericTerm = patentOrGenericPattern.test(lower);
+  const hasPharmaContext = pharmaContextPattern.test(lower);
+
+  if (hasExplicitPharmaTerm || (hasPatentOrGenericTerm && hasPharmaContext)) {
+    return "pharma";
   }
 
   return "generic";
@@ -162,7 +180,7 @@ const scenarioTemplates: Record<CatalystScenario, ScenarioTemplate> = {
       "Build adoption scenarios by vehicle segment and geography.",
     ],
   },
-  glp1PharmaPatent: {
+  pharma: {
     eventSummary: (event) =>
       `${event} could alter the profit pool around GLP-1 therapies, branded drug exclusivity, generic entry, and payer behavior. The research map should distinguish patent owners, generic manufacturers, distribution channels, insurers, and adjacent consumer-health categories.`,
     impactChain: [
