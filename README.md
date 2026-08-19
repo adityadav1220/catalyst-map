@@ -2,6 +2,12 @@
 
 Catalyst Map turns a future event, policy change, patent expiry, infrastructure project, or market trend into an interactive investment-research map. It traces potential effects through demand, supply chains, infrastructure, public-company research leads, risks, second-order effects, and questions to verify.
 
+## Live Production App
+
+**[Open Catalyst Map on Vercel](https://catalyst-map.vercel.app)**
+
+Production status: **deployed and operational**. The homepage and analysis API have been verified in production. The deployment currently uses Mock Fallback Mode until `GROQ_API_KEY` is added to the Vercel project environment.
+
 The app supports two analysis modes without authentication or a database.
 
 ## Analysis Modes
@@ -72,12 +78,15 @@ npm test
 npm run build
 ```
 
-## Deployment to Vercel
+## Production Deployment
 
-1. Import the GitHub repository into Vercel.
-2. Keep the default Next.js build settings.
-3. Add `GROQ_API_KEY` and `LLM_PROVIDER=groq` in the Vercel project environment settings to enable Smart Mode.
-4. Deploy.
+The `main` branch is deployed to Vercel at [catalyst-map.vercel.app](https://catalyst-map.vercel.app).
+
+To enable Groq Smart Mode in production:
+
+1. Add `GROQ_API_KEY` to the Vercel project environment settings.
+2. Optionally add `LLM_PROVIDER=groq` (Groq is already the default).
+3. Redeploy the production deployment so the new environment variables take effect.
 
 If the environment variable is absent, the deployed app continues to work in mock fallback mode.
 
