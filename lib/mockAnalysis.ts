@@ -8,7 +8,7 @@ export type ExposureType =
 
 export type Confidence = "High" | "Medium" | "Low";
 
-export type ExposureRow = {
+export type ExposureCompany = {
   company: string;
   exampleTicker: string | null;
   category: string;
@@ -18,19 +18,66 @@ export type ExposureRow = {
   keyRisk: string;
 };
 
+export type ExposureGroup = {
+  id: string;
+  title: string;
+  explanation: string;
+  companies: ExposureCompany[];
+};
+
+export type CatalystScenario = "semiconductor" | "ev" | "pharma" | "generic";
+
+export type CatalystTheme = {
+  name: string;
+  eyebrow: string;
+  canvasClass: string;
+  centerClass: string;
+  activeNodeClass: string;
+  accentClass: string;
+  glowClass: string;
+};
+
+export type MapNodeType =
+  | "demand"
+  | "supply"
+  | "infrastructure"
+  | "companies"
+  | "risk"
+  | "second-order"
+  | "research";
+
+export type MapNode = {
+  id: string;
+  label: string;
+  type: MapNodeType;
+  shortSummary: string;
+  detail: string;
+  relatedSectors: string[];
+  relatedCompanies: string[];
+  risks: string[];
+  confidence: Confidence;
+  verifyNext: string[];
+};
+
 export type CatalystAnalysis = {
+  scenario: CatalystScenario;
+  theme: CatalystTheme;
   catalystSummary: string;
-  topExposureMap: ExposureRow[];
+  thesis: string;
+  mapNodes: MapNode[];
+  exposureGroups: ExposureGroup[];
+  researchChecklist: string[];
+};
+
+type ScenarioContent = {
+  catalystSummary: (event: string) => string;
+  topExposureMap: ExposureCompany[];
   impactChain: [string, string, string, string, string];
   secondOrderEffects: string[];
   researchChecklist: string[];
 };
 
-export type CatalystScenario = "semiconductor" | "ev" | "pharma" | "generic";
-
-type ScenarioTemplate = Omit<CatalystAnalysis, "catalystSummary"> & {
-  catalystSummary: (event: string) => string;
-};
+type ScenarioTemplate = ScenarioContent;
 
 const normalizeEvent = (eventText: string) => eventText.trim().replace(/\s+/g, " ");
 
@@ -381,12 +428,448 @@ const scenarioTemplates: Record<CatalystScenario, ScenarioTemplate> = {
   },
 };
 
+const scenarioThemes: Record<CatalystScenario, CatalystTheme> = {
+  semiconductor: {
+    name: "Chip & fabrication",
+    eyebrow: "Semiconductor system map",
+    canvasClass: "border-indigo-200 bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-900",
+    centerClass: "border-cyan-300/60 bg-indigo-950 text-white shadow-cyan-950/60",
+    activeNodeClass: "border-cyan-400 bg-cyan-50 text-cyan-950 ring-cyan-300",
+    accentClass: "bg-cyan-500 text-white hover:bg-cyan-400",
+    glowClass: "bg-cyan-400/20",
+  },
+  ev: {
+    name: "Energy & grid",
+    eyebrow: "Electrification system map",
+    canvasClass: "border-emerald-200 bg-gradient-to-br from-emerald-950 via-teal-950 to-slate-900",
+    centerClass: "border-lime-300/60 bg-emerald-950 text-white shadow-emerald-950/60",
+    activeNodeClass: "border-emerald-400 bg-emerald-50 text-emerald-950 ring-emerald-300",
+    accentClass: "bg-emerald-600 text-white hover:bg-emerald-500",
+    glowClass: "bg-lime-400/20",
+  },
+  pharma: {
+    name: "Health & pharma",
+    eyebrow: "Pharma value-chain map",
+    canvasClass: "border-sky-200 bg-gradient-to-br from-sky-950 via-blue-950 to-slate-900",
+    centerClass: "border-sky-300/60 bg-blue-950 text-white shadow-blue-950/60",
+    activeNodeClass: "border-sky-400 bg-sky-50 text-sky-950 ring-sky-300",
+    accentClass: "bg-sky-600 text-white hover:bg-sky-500",
+    glowClass: "bg-sky-400/20",
+  },
+  generic: {
+    name: "Neutral research",
+    eyebrow: "Exploratory research map",
+    canvasClass: "border-slate-300 bg-gradient-to-br from-slate-900 via-slate-800 to-zinc-900",
+    centerClass: "border-slate-300/60 bg-slate-900 text-white shadow-slate-950/60",
+    activeNodeClass: "border-slate-500 bg-slate-100 text-slate-950 ring-slate-300",
+    accentClass: "bg-slate-700 text-white hover:bg-slate-600",
+    glowClass: "bg-slate-300/20",
+  },
+};
+
+export const getScenarioTheme = (scenario: CatalystScenario): CatalystTheme => ({
+  ...scenarioThemes[scenario],
+});
+
+type ScenarioProfile = {
+  thesis: string;
+  sectors: [string[], string[], string[]];
+  demandDetail: string;
+  supplyDetail: string;
+  infrastructureDetail: string;
+};
+
+const scenarioProfiles: Record<CatalystScenario, ScenarioProfile> = {
+  semiconductor: {
+    thesis: "The catalyst matters if it changes fab utilization or funded capacity—and that change reaches qualified tool, material, software, packaging, and utility suppliers.",
+    sectors: [
+      ["Foundries", "Fabless semiconductors", "Electronics end markets"],
+      ["Semiconductor equipment", "Specialty materials", "EDA", "Advanced packaging"],
+      ["Power equipment", "Water systems", "Industrial construction"],
+    ],
+    demandDetail: "The first question is whether the event changes real wafer demand, node mix, or geographic sourcing rather than merely announcing future capacity.",
+    supplyDetail: "Fab spending flows through tightly qualified tools, chemicals, design software, substrates, assembly, and test—with different lead times and revenue recognition.",
+    infrastructureDetail: "A fab cannot ramp without reliable power, ultra-pure water, construction labor, permits, and grid interconnection, creating exposure beyond semiconductor vendors.",
+  },
+  ev: {
+    thesis: "The catalyst becomes investable when funded vehicle demand pulls through batteries, charging, and grid equipment faster than pricing pressure and infrastructure delays consume the upside.",
+    sectors: [
+      ["EV manufacturers", "Public transit", "Commercial fleets"],
+      ["Battery cells", "Lithium and materials", "Charging hardware"],
+      ["Grid equipment", "Utilities", "Depot infrastructure"],
+    ],
+    demandDetail: "Separate policy ambition from funded purchases: passenger vehicles, buses, and commercial fleets have different economics, timelines, and utilization patterns.",
+    supplyDetail: "Incremental vehicles pull on battery cells, packs, lithium, power electronics, charging hardware, and eventually recycling capacity.",
+    infrastructureDetail: "Depot and public charging require sites, interconnections, transformers, switchgear, software, and dependable utilization to produce returns.",
+  },
+  pharma: {
+    thesis: "The value pool shifts only when patent scope, regulatory approval, and injectable capacity translate headline expiry into lower net prices and broader patient access.",
+    sectors: [
+      ["Originator pharma", "Generic manufacturers", "Metabolic health"],
+      ["Injectable manufacturing", "Packaging devices", "Cold-chain logistics"],
+      ["Drug distribution", "Specialty pharmacy", "Telehealth platforms"],
+    ],
+    demandDetail: "Lower net prices can expand the treated population, but payer rules, adherence, supply, and clinical differentiation determine the actual volume response.",
+    supplyDetail: "Peptide production, sterile fill-finish, injection devices, cold chain, and regulatory approval make GLP-1 competition more complex than a simple tablet generic.",
+    infrastructureDetail: "Distribution, specialty pharmacy, telehealth access, refrigeration, and injector availability determine whether increased manufacturing reaches patients.",
+  },
+  generic: {
+    thesis: "Treat the catalyst as an unproven research lead until public filings and measurable milestones reveal which business categories have material exposure.",
+    sectors: [
+      ["Direct operators", "Customers", "Substitutes"],
+      ["Specialized suppliers", "Distribution", "Services"],
+      ["Physical infrastructure", "Digital infrastructure", "Compliance"],
+    ],
+    demandDetail: "Define the customer behavior, cost, incentive, or regulatory constraint that must change before assigning beneficiaries.",
+    supplyDetail: "Trace scarce inputs, channels, and substitutes without assuming that a category-level connection maps to a listed company.",
+    infrastructureDetail: "Test whether implementation requires meaningful physical, digital, logistics, or compliance spending and who is positioned to supply it.",
+  },
+};
+
+const indiaPattern = /\b(india|indian|delhi|mumbai|bengaluru|bangalore|hyderabad|chennai)\b/i;
+
+const categoryExposure = (
+  company: string,
+  category: string,
+  exposureType: ExposureType,
+  connection: string,
+  keyRisk: string,
+): ExposureCompany => ({
+  company,
+  exampleTicker: null,
+  category,
+  exposureType,
+  connection,
+  confidence: "Low",
+  keyRisk,
+});
+
+const indiaEvCompanies: ExposureCompany[] = [
+  {
+    company: "Tata Motors",
+    exampleTicker: "TATAMOTORS.NS",
+    category: "India EV and commercial vehicle manufacturer",
+    exposureType: "Direct",
+    connection: "Electric bus, fleet, and passenger-vehicle procurement can create local demand exposure across Tata's vehicle portfolio.",
+    confidence: "Medium",
+    keyRisk: "Delhi-specific awards and EV revenue materiality must be confirmed in current filings and procurement data.",
+  },
+  {
+    company: "Olectra Greentech",
+    exampleTicker: "OLECTRA.NS",
+    category: "India electric bus manufacturer",
+    exposureType: "Direct",
+    connection: "Public-transport electrification can increase demand for locally supplied electric buses and related service contracts.",
+    confidence: "Medium",
+    keyRisk: "Tender timing, delivery execution, customer concentration, and working capital can dominate headline order value.",
+  },
+  {
+    company: "Exide Industries",
+    exampleTicker: "EXIDEIND.NS",
+    category: "India battery ecosystem",
+    exposureType: "Supplier",
+    connection: "Domestic electrification can support battery-cell, pack, and energy-storage investment within India's broader battery ecosystem.",
+    confidence: "Low",
+    keyRisk: "Current revenue may remain concentrated in legacy batteries while newer capacity ramps slowly.",
+  },
+];
+
+const indiaSemiconductorCompanies: ExposureCompany[] = [
+  {
+    company: "Kaynes Technology India",
+    exampleTicker: "KAYNES.NS",
+    category: "India electronics / semiconductor ecosystem",
+    exposureType: "Speculative",
+    connection: "Domestic semiconductor and electronics investment may create local assembly, packaging, and manufacturing opportunities.",
+    confidence: "Low",
+    keyRisk: "Project funding, commissioning, customer qualification, and semiconductor-specific revenue remain execution dependent.",
+  },
+  {
+    company: "Tata Elxsi",
+    exampleTicker: "TATAELXSI.NS",
+    category: "India embedded design services",
+    exposureType: "Speculative",
+    connection: "A larger domestic chip ecosystem may increase demand for embedded engineering and semiconductor-adjacent design services.",
+    confidence: "Low",
+    keyRisk: "The connection is indirect and may be immaterial relative to automotive and media design revenue.",
+  },
+];
+
+const buildExposureGroups = (
+  scenario: CatalystScenario,
+  template: ScenarioTemplate,
+  event: string,
+): ExposureGroup[] => {
+  const companies = template.topExposureMap;
+  const indiaAware = indiaPattern.test(event);
+
+  if (scenario === "ev") {
+    return [
+      {
+        id: "regional",
+        title: indiaAware ? "Illustrative India/region-aware examples" : "Local / regional candidates",
+        explanation: indiaAware
+          ? "India-listed examples with potentially closer operating exposure to local vehicle, bus, battery, or fleet spending. Verify current listings, filings, and revenue exposure."
+          : "Direct vehicle or fleet candidates whose relevance depends on the catalyst's actual geography.",
+        companies: indiaAware ? indiaEvCompanies : [companies[0]],
+      },
+      {
+        id: "global-proxies",
+        title: "Global supply-chain proxies",
+        explanation: "Illustrative global battery and material names that may capture supply-chain demand without being local recommendations.",
+        companies: [companies[1], companies[4]],
+      },
+      {
+        id: "infrastructure",
+        title: "Infrastructure enablers",
+        explanation: "Charging and power-equipment exposure that depends on funded sites, grid connections, and utilization.",
+        companies: [companies[2], companies[3]],
+      },
+      {
+        id: "losers",
+        title: "Potential losers",
+        explanation: "Businesses that could face gradual demand pressure if fleet electrification becomes material.",
+        companies: [companies[6]],
+      },
+      {
+        id: "second-order",
+        title: "Speculative second-order plays",
+        explanation: "Adjacent fleet and powertrain exposure where legacy operations can offset the electrification opportunity.",
+        companies: [companies[5]],
+      },
+    ];
+  }
+
+  if (scenario === "semiconductor") {
+    return [
+      {
+        id: "regional",
+        title: indiaAware ? "India / local ecosystem candidates" : "Local / regional candidates",
+        explanation: indiaAware
+          ? "Illustrative India-listed ecosystem examples—not presumed fab winners. Verify project scope, current listings, filings, and semiconductor revenue exposure."
+          : "Direct ecosystem candidates whose relevance must be matched to the event's node, customer base, and geography.",
+        companies: indiaAware ? indiaSemiconductorCompanies : [companies[0]],
+      },
+      {
+        id: "global-proxies",
+        title: "Global equipment, material & EDA proxies",
+        explanation: "Global suppliers that illustrate how fab investment can flow into tools, qualified materials, and chip-design software.",
+        companies: [companies[1], companies[2], companies[3]],
+      },
+      {
+        id: "infrastructure",
+        title: "Infrastructure enablers",
+        explanation: "Power, water, utility, and construction exposure required before new capacity can operate.",
+        companies: [companies[5]],
+      },
+      {
+        id: "losers",
+        title: "Possible losers or risk exposures",
+        explanation: "Category-level downside candidates if capacity arrives late, costs rise, or older nodes become oversupplied.",
+        companies: [categoryExposure(
+          "Import-dependent electronics manufacturers (category only)",
+          "Downstream electronics",
+          "Negative",
+          "Component costs or allocation constraints may pressure manufacturers without pricing power.",
+          "Local sourcing, inventory buffers, or falling chip prices may eliminate the expected downside.",
+        )],
+      },
+      {
+        id: "second-order",
+        title: "Speculative second-order plays",
+        explanation: "Foundry and advanced-packaging proxies whose benefit depends on actual customer wins and qualified production ramps.",
+        companies: [companies[0], companies[4]],
+      },
+    ];
+  }
+
+  if (scenario === "pharma") {
+    return [
+      {
+        id: "originators",
+        title: "Originator pharma",
+        explanation: "Patent owners and branded competitors with direct exposure to exclusivity, lifecycle strategy, and class pricing.",
+        companies: [companies[0]],
+      },
+      {
+        id: "generics",
+        title: "Generic manufacturers",
+        explanation: "Speculative entrants that still need product-specific filings, approvals, and complex injectable capacity.",
+        companies: [companies[1]],
+      },
+      {
+        id: "distribution",
+        title: "Distributors & platforms",
+        explanation: "Volume and patient-access channels that may benefit if lower prices expand treatment demand.",
+        companies: [companies[2], companies[3]],
+      },
+      {
+        id: "devices",
+        title: "Device & packaging suppliers",
+        explanation: "Containment, injection, and packaging exposure where product-specific content must be verified.",
+        companies: [companies[4]],
+      },
+      {
+        id: "losers",
+        title: "Pricing-pressure losers",
+        explanation: "Originators whose class pricing or payer negotiations could weaken as competition increases.",
+        companies: [companies[5]],
+      },
+    ];
+  }
+
+  return [
+    {
+      id: "regional",
+      title: "Local / regional candidates",
+      explanation: "Category-level placeholders until geography-specific public exposure is verified.",
+      companies: [companies[0]],
+    },
+    {
+      id: "global-proxies",
+      title: "Global supply-chain proxies",
+      explanation: "No tickers are assigned because the catalyst lacks enough scenario-specific evidence.",
+      companies: [companies[1]],
+    },
+    {
+      id: "infrastructure",
+      title: "Infrastructure enablers",
+      explanation: "Physical, digital, logistics, or compliance categories that may enable implementation.",
+      companies: [companies[2]],
+    },
+    {
+      id: "losers",
+      title: "Potential losers",
+      explanation: "Category-level incumbents that could face displacement or margin pressure.",
+      companies: [companies[4]],
+    },
+    {
+      id: "second-order",
+      title: "Speculative second-order plays",
+      explanation: "Downstream categories to investigate without pretending a public-company match is known.",
+      companies: [companies[3]],
+    },
+  ];
+};
+
+const companyLabels = (companies: ExposureCompany[]) =>
+  companies.map((company) =>
+    company.exampleTicker
+      ? `${company.company} (${company.exampleTicker})`
+      : company.company,
+  );
+
+const buildMapNodes = (
+  scenario: CatalystScenario,
+  template: ScenarioTemplate,
+  exposureGroups: ExposureGroup[],
+): MapNode[] => {
+  const profile = scenarioProfiles[scenario];
+  const groupedCompanies = exposureGroups.flatMap((group) => group.companies);
+  const companies = companyLabels(groupedCompanies);
+  const commonRisks = groupedCompanies.map((company) => company.keyRisk);
+
+  return [
+    {
+      id: "demand-shift",
+      label: "Demand Shift",
+      type: "demand",
+      shortSummary: template.impactChain[1],
+      detail: profile.demandDetail,
+      relatedSectors: profile.sectors[0],
+      relatedCompanies: companies.slice(0, 2),
+      risks: commonRisks.slice(0, 2),
+      confidence: scenario === "generic" ? "Low" : "Medium",
+      verifyNext: template.researchChecklist.slice(0, 2),
+    },
+    {
+      id: "supply-chain",
+      label: "Supply Chain",
+      type: "supply",
+      shortSummary: template.impactChain[2],
+      detail: profile.supplyDetail,
+      relatedSectors: profile.sectors[1],
+      relatedCompanies: companies.slice(1, 5),
+      risks: commonRisks.slice(1, 3),
+      confidence: scenario === "generic" ? "Low" : "Medium",
+      verifyNext: template.researchChecklist.slice(1, 3),
+    },
+    {
+      id: "infrastructure",
+      label: "Infrastructure",
+      type: "infrastructure",
+      shortSummary: profile.sectors[2].join(" · "),
+      detail: profile.infrastructureDetail,
+      relatedSectors: profile.sectors[2],
+      relatedCompanies: companies.filter((_, index) => index >= 2).slice(0, 3),
+      risks: commonRisks.slice(-2),
+      confidence: scenario === "generic" ? "Low" : "Medium",
+      verifyNext: template.researchChecklist.slice(1, 3),
+    },
+    {
+      id: "public-companies",
+      label: "Public Companies",
+      type: "companies",
+      shortSummary: `${exposureGroups.length} exposure groups to investigate`,
+      detail: "These examples map direct, supplier, infrastructure, customer, negative, and speculative relationships. They are starting points for verification—not recommendations or proof of material exposure.",
+      relatedSectors: [...new Set(groupedCompanies.map((company) => company.category))],
+      relatedCompanies: companies,
+      risks: commonRisks,
+      confidence: scenario === "generic" ? "Low" : "Medium",
+      verifyNext: template.researchChecklist,
+    },
+    {
+      id: "risks",
+      label: "Risks",
+      type: "risk",
+      shortSummary: "What could break or delay the thesis",
+      detail: "A plausible relationship is not the same as financial materiality. Timing, valuation, geography, execution, and disclosed revenue exposure can all invalidate the apparent connection.",
+      relatedSectors: [...new Set(groupedCompanies.map((company) => company.category))].slice(0, 4),
+      relatedCompanies: companies.filter((_, index) => index === 0 || index === companies.length - 1),
+      risks: commonRisks.slice(0, 4),
+      confidence: "High",
+      verifyNext: template.researchChecklist.slice(-2),
+    },
+    {
+      id: "second-order-effects",
+      label: "Second-Order Effects",
+      type: "second-order",
+      shortSummary: template.secondOrderEffects[0],
+      detail: template.secondOrderEffects.join(" "),
+      relatedSectors: [...profile.sectors[1], ...profile.sectors[2]].slice(0, 5),
+      relatedCompanies: companies.slice(-2),
+      risks: ["Second-order effects may be too delayed or immaterial to affect consolidated results."],
+      confidence: "Low",
+      verifyNext: template.researchChecklist.slice(2, 4),
+    },
+    {
+      id: "research-questions",
+      label: "Research Questions",
+      type: "research",
+      shortSummary: template.impactChain[4],
+      detail: "Turn the map into falsifiable questions. Look for reported segment exposure, committed spending, implementation milestones, management confirmation, and evidence that expectations are not already reflected in valuation.",
+      relatedSectors: profile.sectors.flat().slice(0, 5),
+      relatedCompanies: [],
+      risks: ["Confirmation bias can turn a thematic connection into an unsupported investment thesis."],
+      confidence: "High",
+      verifyNext: template.researchChecklist,
+    },
+  ];
+};
+
 export const generateMockAnalysis = (eventText: string): CatalystAnalysis => {
   const event = normalizeEvent(eventText);
-  const template = scenarioTemplates[detectScenario(event)];
+  const scenario = detectScenario(event);
+  const template = scenarioTemplates[scenario];
+  const exposureGroups = buildExposureGroups(scenario, template, event);
 
   return {
-    ...template,
+    scenario,
+    theme: scenarioThemes[scenario],
     catalystSummary: template.catalystSummary(event),
+    thesis: scenarioProfiles[scenario].thesis,
+    mapNodes: buildMapNodes(scenario, template, exposureGroups),
+    exposureGroups,
+    researchChecklist: template.researchChecklist,
   };
 };

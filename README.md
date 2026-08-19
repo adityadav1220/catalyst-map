@@ -1,22 +1,26 @@
 # Catalyst Map
 
-Catalyst Map is a simple web app for turning a future event, policy change, patent expiry, or market trend into a structured investment research map.
+Catalyst Map turns a future event, policy change, patent expiry, infrastructure project, or market trend into an interactive investment-research map. It traces potential effects through demand, supply chains, infrastructure, public-company research leads, risks, second-order effects, and questions to verify.
 
-The current MVP uses a local mock analysis function. It does not call an external AI API, require authentication, or store user data in a database.
+The app supports two analysis modes without authentication or a database.
 
-## What It Does
+## Analysis Modes
 
-- Accepts a user-entered event or market catalyst.
-- Generates a realistic-looking research map for the entered catalyst.
-- Organizes the output into an event summary, impact chain, affected sectors, company categories, possible winners, possible losers, risks, and a research checklist.
-- Proves the core workflow before adding real data sources or AI-generated analysis.
+### Groq Smart Mode
 
-## Tech Stack
+When `GROQ_API_KEY` is configured, `POST /api/analyze` calls Groq's OpenAI-compatible Chat Completions endpoint from the server. The default provider is selected with `LLM_PROVIDER=groq`, and the lightweight `llama-3.1-8b-instant` model is asked to return JSON matching the Catalyst Map data model, including:
 
-- Next.js
-- TypeScript
-- Tailwind CSS
-- Local mock analysis logic
+- A catalyst summary and research thesis
+- Seven interactive causal-map nodes
+- Geography-aware exposure groups
+- Confidence levels and key risks
+- A concise research checklist
+
+The response is parsed and checked with the app's runtime validator before it reaches the UI. Invalid JSON or a contract mismatch returns a clear error; it is never silently presented as valid research. The API key is read only by the server route and is never sent to the browser.
+
+### Mock Fallback Mode
+
+When no API key is configured, the same API route returns the existing local mock analysis. Semiconductor, EV/electrification, and GLP-1/pharma inputs use richer templates; other events use the cautious generic fallback. This keeps local development and Vercel previews functional without external services.
 
 ## Local Setup
 
@@ -26,40 +30,69 @@ The current MVP uses a local mock analysis function. It does not call an externa
 npm install
 ```
 
-2. Start the local development server:
+2. Optional: enable AI Smart Mode by copying the example environment file:
+
+```bash
+cp .env.example .env.local
+```
+
+Then add your server-side key to `.env.local`:
+
+```bash
+GROQ_API_KEY=your_key_here
+LLM_PROVIDER=groq
+```
+
+Leave the value empty or skip this step to use mock fallback mode.
+
+3. Start the development server:
 
 ```bash
 npm run dev
 ```
 
-3. Open the local URL shown in the terminal, usually:
+4. Open the local URL shown in the terminal, usually [http://localhost:3000](http://localhost:3000).
 
-```bash
-http://localhost:3000
+## API
+
+`POST /api/analyze`
+
+```json
+{
+  "event": "Government is building a new dam on river Ganga"
+}
 ```
 
-## Build
+The response is a `CatalystAnalysis` object. The `X-Catalyst-Mode` response header is `smart` when AI generated the analysis and `mock` when the local fallback was used.
 
-Run a production build:
+## Validation
 
 ```bash
+npm test
 npm run build
 ```
 
 ## Deployment to Vercel
 
-1. Push this repository to GitHub.
-2. Go to Vercel and create a new project.
-3. Import the GitHub repository.
-4. Keep the default Next.js build settings.
-5. Deploy.
+1. Import the GitHub repository into Vercel.
+2. Keep the default Next.js build settings.
+3. Add `GROQ_API_KEY` and `LLM_PROVIDER=groq` in the Vercel project environment settings to enable Smart Mode.
+4. Deploy.
 
-No environment variables are required for the current MVP.
+If the environment variable is absent, the deployed app continues to work in mock fallback mode.
 
-## Recruiter Pitch
+API keys must stay in `.env.local` or the Vercel environment settings. Never commit a populated environment file or paste a key into frontend code.
 
-Catalyst Map demonstrates a focused product workflow for investment research: starting from an ambiguous real-world catalyst and converting it into a structured map of possible market impacts. The MVP is intentionally simple and deployable, showing product thinking, frontend execution, TypeScript structure, and a path toward future AI-assisted research features.
+## Research Limitations
 
-## Disclaimer
+Catalyst Map provides AI-assisted research organization, not financial advice or a recommendation to buy, sell, or hold any security. Company names and example tickers are leads to investigate, not verified exposure claims.
 
-Catalyst Map is for research workflow demonstration only. The generated output is mock analysis and is not financial advice, investment advice, or a recommendation to buy or sell any security.
+Live web research, current market data, regulatory filings, procurement records, and real-time listing verification are not included yet. Users should verify every connection using current primary sources before relying on an idea.
+
+## Smart Mode Troubleshooting
+
+- Put the real Groq key in `.env.local` at the project root—not in `.env.example`.
+- Use `GROQ_API_KEY=your_key_here`. `LLM_PROVIDER=groq` is optional because Groq is the default provider.
+- Stop and restart `npm run dev` after creating or editing an environment file. Next.js loads project-root environment files when the server starts.
+- If the UI reports a provider error, check the server console for the safe provider status and confirm the key is active in Groq.
+- Never commit `.env.local`, populated environment files, or API keys. The repository ignores `.env`, `.env.local`, and `.env*.local`.
